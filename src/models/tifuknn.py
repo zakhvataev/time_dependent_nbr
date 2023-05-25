@@ -447,8 +447,8 @@ class TIFUKNNTimeDaysRecommenderWaves(TIFUKNNRecommender):
         pow_2 = trial.suggest_categorical(
             "pow_2", choices=[0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]
         )
-        freq = trial.suggest_float(
-            "freq", low=0, high=1
+        freq = trial.suggest_categorical(
+            "freq", [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]
         )
         alpha = trial.suggest_categorical(
             "alpha", choices=[0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]

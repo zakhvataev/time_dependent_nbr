@@ -74,4 +74,37 @@ group_size_days = trial.suggest_int("group_size_days", 1, 365)
 use_log = trial.suggest_categorical("use_log", [True, False])
 ```
 
+### TIFU-KNN-MW (tifuknn_modified_weights)
+```python
+num_nearest_neighbors = trial.suggest_categorical(
+    "num_nearest_neighbors", [100, 300, 500, 700, 900, 1100, 1300]
+)
+pow_1 = trial.suggest_categorical(
+    "pow_1", [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]
+)
+pow_2 = trial.suggest_categorical(
+    "pow_2", [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]
+)
+freq = trial.suggest_categorical(
+    "freq", [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]
+)
+alpha = trial.suggest_categorical("alpha", [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1])
+```
+
+### TIFU-KNN-MW-TA (tifuknn_time_days_modified_weights)
+```python
+num_nearest_neighbors = trial.suggest_categorical(
+    "num_nearest_neighbors", [100, 300, 500, 700, 900, 1100, 1300]
+)
+pow_1 = trial.suggest_categorical(
+    "pow_1", [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]
+)
+pow_2 = trial.suggest_categorical(
+    "pow_2", [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]
+)
+freq = trial.suggest_categorical(
+    "freq", [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]
+)
+alpha = trial.suggest_categorical("alpha", [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1])
+```
 
