@@ -30,6 +30,7 @@ class Evaluator:
 
         self.dataset_df = dataset_df
         self._num_users_to_evaluate = self.dataset_df.shape[0]
+        self.unique_items = 1 + max(set(item for sublist in self.dataset_df['basket'] for item in sublist))
 
         self.batch_size = min(batch_size, self._num_users_to_evaluate)
 
@@ -39,7 +40,11 @@ class Evaluator:
         for metric_name in metric_names:
             metric_cls = METRICS[metric_name]
             for cutoff in self.cutoff_list:
-                self.metrics.append(metric_cls(topk=cutoff))
+                if metric_name != 'diversity':
+                    self.metrics.append(metric_cls(topk=cutoff))
+                else:
+                    self.metrics.append(metric_cls(topk=cutoff, n_items=self.unique_items))
+
 
         if self.save_user_metrics:
             self.user_metrics = defaultdict(list)
@@ -74,14 +79,26 @@ class Evaluator:
 
             for metric in self.metrics:
                 if self.save_user_metrics:
-                    cumulative_metric_old = metric.cumulative_value
-                    metric.add_recommendations(true_basket, model_scores)
-                    cumulative_metric_new = metric.cumulative_value
-                    self.user_metrics[metric.get_metric_name()].append(
-                        cumulative_metric_new - cumulative_metric_old
-                    )
+                    if metric.metric_name == 'diversity':
+                        cumulative_metric_old = metric.cumulative_value
+                        metric.add_recommendations(model_scores)
+                        cumulative_metric_new = metric.cumulative_value
+                        self.user_metrics[metric.get_metric_name()].append(
+                            cumulative_metric_new - cumulative_metric_old
+                        )
+                    else:
+                        cumulative_metric_old = metric.cumulative_value
+                        metric.add_recommendations(true_basket, model_scores)
+                        cumulative_metric_new = metric.cumulative_value
+                        self.user_metrics[metric.get_metric_name()].append(
+                            cumulative_metric_new - cumulative_metric_old
+                        )
                 else:
-                    metric.add_recommendations(true_basket, model_scores)
+                    if metric.metric_name == 'diversity':
+                        metric.add_recommendations(model_scores)
+                    else:
+                        metric.add_recommendations(true_basket, model_scores)
+
 
             self._n_users_evaluated += 1
 

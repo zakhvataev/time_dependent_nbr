@@ -81,11 +81,11 @@ class TIFUKNNRecommender(IRecommender):
 
         df.drop(columns=["group_num", "basket_count", "basket_num"], inplace=True)
         return df
-
+    
     @classmethod
     def sample_params(cls, trial: optuna.Trial) -> dict:
         num_nearest_neighbors = trial.suggest_categorical(
-            "num_nearest_neighbors", [100, 300, 500, 700, 900, 1100, 1300]
+            "num_nearest_neighbors", [100]
         )
         within_decay_rate = trial.suggest_categorical(
             "within_decay_rate", [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]
@@ -93,7 +93,7 @@ class TIFUKNNRecommender(IRecommender):
         group_decay_rate = trial.suggest_categorical(
             "group_decay_rate", [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]
         )
-        alpha = trial.suggest_categorical("alpha", [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1])
+        alpha = trial.suggest_categorical("alpha", [0.2, 0.5, 0.6])
         group_count = trial.suggest_int("group_count", 2, 23)
         return {
             "num_nearest_neighbors": num_nearest_neighbors,
@@ -297,4 +297,167 @@ class TIFUKNNTimeDaysNextTsRecommender(IRecommenderNextTs):
             "alpha": alpha,
             "group_size_days": group_size_days,
             "use_log": use_log,
+        }
+
+class TIFUKNNRecommenderWaves(TIFUKNNRecommender):
+    def __init__(
+        self,
+        num_nearest_neighbors: int = 300,
+        pow_1: float = 0.1,
+        pow_2: float = 0.01,
+        freq: float = 0.1,
+        alpha: float = 0.7,
+    ) -> None:
+        super().__init__()
+        self.num_nearest_neighbors = num_nearest_neighbors
+        self.pow_1 = pow_1
+        self.pow_2 = pow_2
+        self.freq = freq
+        self.alpha = alpha
+
+        self._user_vectors = None
+        self._nbrs = None
+
+    def fit(self, dataset: NBRDatasetBase):
+        user_basket_df = dataset.train_df.groupby("user_id", as_index=False).apply(self._calculate_basket_weight)
+        user_basket_df.reset_index(drop=True, inplace=True)
+
+        df = user_basket_df.explode("basket", ignore_index=True).rename(columns={"basket": "item_id"})
+        df = df.groupby(["user_id", "item_id"], as_index=False).agg(value=("weight", "sum"))
+        self._user_vectors = sps.csr_matrix(
+            (df.value, (df.user_id, df.item_id)),
+            shape=(dataset.num_users, dataset.num_items),
+        )
+
+        self._nbrs = NearestNeighbors(
+            n_neighbors=self.num_nearest_neighbors + 1,
+            algorithm="brute",
+        ).fit(self._user_vectors)
+
+        return self
+
+    def predict(self, user_ids, topk=None):
+        if topk is None:
+            topk = self._user_vectors.shape[1]
+
+        user_vectors = self._user_vectors[user_ids, :]
+
+        user_nn_indices = self._nbrs.kneighbors(user_vectors, return_distance=False)
+
+        user_nn_vectors = []
+        for nn_indices in user_nn_indices:
+            nn_vectors = self._user_vectors[nn_indices[1:], :].mean(axis=0)
+            user_nn_vectors.append(sps.csr_matrix(nn_vectors))
+        user_nn_vectors = sps.vstack(user_nn_vectors)
+
+        pred_matrix = self.alpha * user_vectors + (1 - self.alpha) * user_nn_vectors
+        return pred_matrix
+
+    def _calculate_basket_weight(self, df: pd.DataFrame):
+        df = df.sort_values(by="timestamp", ascending=False, ignore_index=True)
+
+        arr = np.arange(0, len(df))
+        lower_decay = np.exp((-self.pow_1 * arr))
+        upper_decay = np.exp((-self.pow_2 * arr))
+
+        oscillating_f = np.sin(2 * np.pi * self.freq * arr)
+        oscillating_f *= (lower_decay - upper_decay)
+        oscillating_f += upper_decay + lower_decay
+        oscillating_f *= 1/2
+
+        oscillating_f /= oscillating_f.max()
+
+        df['weight'] = oscillating_f
+        
+        return df
+
+    @classmethod
+    def sample_params(cls, trial: optuna.Trial) -> dict:
+        num_nearest_neighbors = trial.suggest_categorical(
+            "num_nearest_neighbors", [100, 300, 500, 700, 900, 1100, 1300]
+        )
+        pow_1 = trial.suggest_categorical(
+            "pow_1", [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]
+        )
+        pow_2 = trial.suggest_categorical(
+            "pow_2", [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]
+        )
+        freq = trial.suggest_categorical(
+            "freq", [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]
+        )
+        alpha = trial.suggest_categorical(
+            "alpha", [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]
+            )
+         
+        return {
+            "num_nearest_neighbors": num_nearest_neighbors,
+            "pow_1": pow_1,
+            "pow_2": pow_2,
+            "freq": freq,
+            "alpha": alpha,
+        }
+
+class TIFUKNNTimeDaysRecommenderWaves(TIFUKNNRecommender):
+    def __init__(
+        self,
+        num_nearest_neighbors: int = 300,
+        pow_1: float = 0.1,
+        pow_2: float = 0.01,
+        freq: float = 0.1,
+        alpha: float = 0.7,
+    ) -> None:
+        super().__init__()
+        self.num_nearest_neighbors = num_nearest_neighbors
+        self.pow_1 = pow_1
+        self.pow_2 = pow_2
+        self.freq = freq
+        self.alpha = alpha
+
+        self._user_vectors = None
+        self._nbrs = None
+
+    def _calculate_basket_weight(self, df: pd.DataFrame):
+        df = df.sort_values(by="timestamp", ascending=False, ignore_index=True)
+        max_timestamp = df['timestamp'].max()
+
+        arr = (max_timestamp - df["timestamp"]) / pd.Timedelta(days=1)
+
+        lower_decay = np.exp((-self.pow_1 * arr))
+        upper_decay = np.exp((-self.pow_2 * arr))
+
+        oscillating_f = np.sin(2 * np.pi * self.freq * arr)
+        oscillating_f *= (lower_decay - upper_decay)
+        oscillating_f += upper_decay + lower_decay
+        oscillating_f *= 1/2
+
+        oscillating_f /= oscillating_f.max()
+
+        df['weight'] = oscillating_f
+        
+        return df
+
+    @classmethod
+    def sample_params(cls, trial: optuna.Trial) -> dict:
+        num_nearest_neighbors = trial.suggest_categorical(
+            "num_nearest_neighbors", choices=[100, 300, 500, 700, 900, 1100, 1300]
+        )
+        pow_1 = trial.suggest_categorical(
+            "pow_1", choices=[0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]
+        )
+        pow_2 = trial.suggest_categorical(
+            "pow_2", choices=[0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]
+        )
+        freq = trial.suggest_float(
+            "freq", low=0, high=1
+        )
+        alpha = trial.suggest_categorical(
+            "alpha", choices=[0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]
+            )
+         
+        return {
+            "num_nearest_neighbors": num_nearest_neighbors,
+            "pow_1": pow_1,
+            "pow_2": pow_2,
+            "freq": freq,
+            "alpha": alpha,
         }

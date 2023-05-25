@@ -4,6 +4,7 @@ from .tifuknn import (
     TIFUKNNRecommender,
     TIFUKNNTimeDaysRecommender,
     TIFUKNNTimeDaysNextTsRecommender,
+    TIFUKNNRecommenderWaves
 )
 from .core import IRecommender, IRecommenderNextTs
 
@@ -15,4 +16,6 @@ MODELS = {
     "tifuknn": TIFUKNNRecommender,
     "tifuknn_time_days": TIFUKNNTimeDaysRecommender,
     "tifuknn_time_days_next_ts": TIFUKNNTimeDaysNextTsRecommender,
+    "tifuknn_waves": TIFUKNNRecommenderWaves,
+    "tifuknn_time_days_waves": TIFUKNNRecommenderWaves
 }

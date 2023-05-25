@@ -22,6 +22,7 @@ def _objective(
 ):
     set_global_seed(42)
     fit_params = model_cls.sample_params(trial)
+    print('->>', fit_params) ##########################
     model = model_cls(**fit_params)
 
     set_global_seed(42)

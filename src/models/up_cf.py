@@ -57,9 +57,9 @@ class UPCFRecommender(IRecommender):
     @classmethod
     def sample_params(cls, trial: optuna.Trial) -> dict:
         recency = trial.suggest_categorical("recency", [1, 5, 25, 100])
-        q = trial.suggest_categorical("q", [1, 5, 10, 50, 100, 1000])
+        q = trial.suggest_categorical("q", [1, 5, 10, 50, 100])
         alpha = trial.suggest_categorical("alpha", [0, 0.25, 0.5, 0.75, 1])
-        topk_neighbors = trial.suggest_categorical("topk_neighbors", [None, 10, 100, 300, 600, 900])
+        topk_neighbors = trial.suggest_categorical("topk_neighbors", [10, 100, 300, 600, 900])
         preprocessing = trial.suggest_categorical("preprocessing", [None, "binary"])
         return {
             "recency": recency,

@@ -92,7 +92,8 @@ class TopPersonalRecommender(IRecommender):
         item_scores_personal = self._item_personal[user_ids].copy()
         item_scores_popular[item_scores_personal > 0] = 0
         item_scores_popular.eliminate_zeros()
-        item_scores_personal[item_scores_personal > 0] += 1
+        # item_scores_personal[item_scores_personal > 0] += 1
+        item_scores_personal.data += 1
 
         item_scores = item_scores_personal + item_scores_popular
         item_scores[np.argsort(item_scores)[:-topk]] = 0

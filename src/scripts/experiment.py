@@ -1,5 +1,8 @@
 import argparse
 import os
+import sys
+sys.path.append('./..')
+sys.path.append('./../..')
 
 from src.dataset import DATASETS
 from src.models import MODELS
@@ -7,6 +10,7 @@ from src.metrics import METRICS
 from src.settings import DATA_DIR
 from src.evaluation import Evaluator
 from src.hypertuning import run_search
+import warnings
 
 
 def run_experiment(
@@ -51,6 +55,7 @@ def run_experiment(
             raise ValueError(f"Dataset path doesn't exist: {dataset_full_path}")
 
     data = dataset_cls(dataset_dir_name, verbose=verbose)
+    # data.make_leave_one_basket_split()
     data.load_split()
 
     evaluator_valid = Evaluator(dataset_df=data.val_df, cutoff_list=cutoff_list, batch_size=batch_size, verbose=verbose)
@@ -82,6 +87,7 @@ def create_parser():
 
 
 if __name__ == "__main__":
+    warnings.filterwarnings('ignore')
     parser = create_parser()
     args, _ = parser.parse_known_args()
     run_experiment(
